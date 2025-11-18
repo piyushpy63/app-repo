@@ -1,15 +1,12 @@
-name: CI-CD-gitops-pipeline 
-
+name: CI-CD-GitOps-Pipeline
 
 on:
   push:
-    branches: [Main]
+    branches: [ main ]
   workflow_dispatch:
-
 
 env:
   IMAGE_NAME: piyush63/yourapp
-
 
 jobs:
   build-test:
@@ -17,11 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with { python-version: '3.10'}
-      - run: |
-          pip install -r requirements.txt
-          pip install flake8 && flake8 . || true
-          pip install pytest || true && pytest || true
+        with: { python-version: '3.10' }
+      - run: pip install -r requirements.txt
+      - run: pip install flake8 && flake8 . || true
+      - run: pip install pytest || true && pytest || true
 
   docker:
     runs-on: ubuntu-latest
@@ -33,10 +29,8 @@ jobs:
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-
-      - name: build and push image
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build & Push
         id: build
         uses: docker/build-push-action@v5
         with:
@@ -48,22 +42,21 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
       - run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
 
-
   update-manifest:
     runs-on: ubuntu-latest
     needs: docker
     steps:
-      - name: checkout manifest repo
-      - uses: actions/checkout@v4
+      - name: Checkout manifest repo
+        uses: actions/checkout@v4
         with:
-          repository: piyushpy63/manifests-repo
+          repository: piyushpy63/manifest-repo
           token: ${{ secrets.GIT_TOKEN }}
           path: manifests
-      - name: update deployment image tag
+      - name: Update deployment image tag
         run: |
           cd manifests
           sed -i "s|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" deployment.yaml
-      - name: commit and push
+      - name: Commit & push
         run: |
           cd manifests
           git config --global user.name "${{ secrets.GIT_USERNAME }}"
@@ -71,9 +64,3 @@ jobs:
           git add deployment.yaml
           git commit -m "chore: update image to ${IMAGE_TAG}" || echo "no changes to commit"
           git push
-
-
-
-
-
-
