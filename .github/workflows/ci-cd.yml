@@ -17,7 +17,6 @@ jobs:
 
 
     steps:
-      - name: checkout code and python app pytest
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with { python-version: '3.10'}
