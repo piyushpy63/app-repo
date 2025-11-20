@@ -50,7 +50,7 @@ jobs:
       - name: Checkout manifest repo
         uses: actions/checkout@v4
         with:
-          repository: piyushpy63/manifest-repo
+          repository: piyushpy63/manifests-repo
           token: ${{ secrets.GIT_TOKEN }}
           path: manifests
       - name: Update deployment image tag
