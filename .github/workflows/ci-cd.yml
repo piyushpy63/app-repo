@@ -1,10 +1,8 @@
 name: CI-CD-GitOps-Pipeline
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 env:
   IMAGE_NAME: piyush63/yourapp
 
@@ -22,6 +20,9 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: build-test
+    # 1. Map the step output to a job output
+    outputs:
+      tag: ${{ steps.set-tag.outputs.IMAGE_TAG }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -31,16 +32,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build & Push
-        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-      - run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+      # 2. Use the specific GITHUB_OUTPUT syntax
+      - name: Set output tag
+        id: set-tag
+        run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_OUTPUT
 
   update-manifest:
     runs-on: ubuntu-latest
@@ -55,12 +55,13 @@ jobs:
       - name: Update deployment image tag
         run: |
           cd manifests
-          sed -i "s|image: .*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g" deployment.yaml
+          # 3. Reference the output from the 'docker' job
+          sed -i "s|image: .*|image: ${{ env.IMAGE_NAME }}:${{ needs.docker.outputs.tag }}|g" deployment.yaml
       - name: Commit & push
         run: |
           cd manifests
-          git config --global user.name "${{ secrets.GIT_USERNAME }}"
-          git config --global user.email "${{ secrets.GIT_EMAIL }}"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add deployment.yaml
-          git commit -m "chore: update image to ${IMAGE_TAG}" || echo "no changes to commit"
+          git commit -m "chore: update image to ${{ needs.docker.outputs.tag }}" || echo "no changes to commit"
           git push
