@@ -40,7 +40,6 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.IMAGE_NAME }}:latest
       - run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
 
   update-manifest:
